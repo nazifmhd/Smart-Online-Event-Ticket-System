@@ -1,0 +1,34 @@
+{
+  "name": "smart-event-ticket-system",
+  "version": "1.0.0",
+  "description": "Smart Online Event Ticket Booking System",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "test": "node test-runner.js",
+    "test:server": "cd server && npm test",
+    "test:client": "cd client && npm test",
+    "test:coverage": "cd server && npm run test:coverage && cd ../client && npm test -- --coverage --watchAll=false"
+  },
+  "keywords": [
+    "event",
+    "ticket",
+    "booking",
+    "qr",
+    "nodejs",
+    "react"
+  ],
+  "author": "Smart Event System",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "mongodb-memory-server": "^10.2.3"
+  }
+}
