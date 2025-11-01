@@ -10,14 +10,12 @@ import {
   X, 
   Plus,
   Ticket,
-  Settings,
   BarChart3,
   QrCode
 } from 'lucide-react';
 
 export const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout, isAuthenticated, hasRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -198,19 +196,17 @@ export const Layout = ({ children }) => {
             <Menu className="h-6 w-6" />
           </button>
           
-          <div className="flex-1 px-4 flex justify-between">
-            <div className="flex-1 flex">
-              <div className="w-full flex md:ml-0">
-                <div className="relative w-full text-gray-400 focus-within:text-gray-600">
-                  <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none">
-                    <Calendar className="h-5 w-5 ml-3" />
-                  </div>
-                  <input
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    placeholder="Search events..."
-                    type="text"
-                  />
+          <div className="flex-1 px-4 flex items-center justify-between">
+            <div className="flex-1 flex items-center max-w-lg">
+              <div className="relative w-full text-gray-400 focus-within:text-gray-600">
+                <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none pl-3">
+                  <Calendar className="h-5 w-5" />
                 </div>
+                <input
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Search events..."
+                  type="text"
+                />
               </div>
             </div>
             

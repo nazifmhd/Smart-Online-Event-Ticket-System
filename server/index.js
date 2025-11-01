@@ -29,10 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/smart-event-tickets';
 console.log('Connecting to MongoDB:', mongoUri);
 
-mongoose.connect(mongoUri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(mongoUri)
 .then(() => console.log('MongoDB connected successfully'))
 .catch(err => {
   console.error('MongoDB connection error:', err);

@@ -2,9 +2,15 @@ const nodemailer = require('nodemailer');
 
 // Create email transporter
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  // Check if email configuration exists
+  if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn('⚠️  Email configuration not found. Email functionality will be disabled.');
+    return null;
+  }
+  
+  return nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
+    port: process.env.EMAIL_PORT || 587,
     secure: false, // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER,
@@ -17,7 +23,12 @@ const createTransporter = () => {
 const sendVerificationEmail = async (email, verificationToken, name) => {
   const transporter = createTransporter();
   
-  const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
+  if (!transporter) {
+    console.warn('📧 Email service not configured. Skipping verification email.');
+    return { success: false, error: 'Email service not configured' };
+  }
+  
+  const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
   
   const mailOptions = {
     from: `"Smart Event Tickets" <${process.env.EMAIL_USER}>`,
@@ -67,6 +78,7 @@ const sendVerificationEmail = async (email, verificationToken, name) => {
 
   try {
     await transporter.sendMail(mailOptions);
+    console.log(`📧 Email sent successfully to ${email}`);
     return { success: true };
   } catch (error) {
     console.error('Email sending error:', error);
@@ -78,7 +90,12 @@ const sendVerificationEmail = async (email, verificationToken, name) => {
 const sendPasswordResetEmail = async (email, resetToken, name) => {
   const transporter = createTransporter();
   
-  const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+  if (!transporter) {
+    console.warn('📧 Email service not configured. Skipping password reset email.');
+    return { success: false, error: 'Email service not configured' };
+  }
+  
+  const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
   
   const mailOptions = {
     from: `"Smart Event Tickets" <${process.env.EMAIL_USER}>`,
@@ -128,6 +145,7 @@ const sendPasswordResetEmail = async (email, resetToken, name) => {
 
   try {
     await transporter.sendMail(mailOptions);
+    console.log(`📧 Email sent successfully to ${email}`);
     return { success: true };
   } catch (error) {
     console.error('Email sending error:', error);
@@ -138,6 +156,11 @@ const sendPasswordResetEmail = async (email, resetToken, name) => {
 // Send ticket confirmation email
 const sendTicketConfirmationEmail = async (email, name, tickets, event) => {
   const transporter = createTransporter();
+  
+  if (!transporter) {
+    console.warn('📧 Email service not configured. Skipping ticket confirmation email.');
+    return { success: false, error: 'Email service not configured' };
+  }
   
   const mailOptions = {
     from: `"Smart Event Tickets" <${process.env.EMAIL_USER}>`,
@@ -200,6 +223,7 @@ const sendTicketConfirmationEmail = async (email, name, tickets, event) => {
 
   try {
     await transporter.sendMail(mailOptions);
+    console.log(`📧 Email sent successfully to ${email}`);
     return { success: true };
   } catch (error) {
     console.error('Email sending error:', error);

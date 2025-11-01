@@ -63,6 +63,7 @@ export const ticketsAPI = {
   bookTickets: (bookingData) => api.post('/tickets/book', bookingData),
   getMyTickets: (params) => api.get('/tickets/my-tickets', { params }),
   getTicket: (id) => api.get(`/tickets/${id}`),
+  getQRCode: (id) => api.get(`/tickets/${id}/qr-code`),
   verifyTicket: (id, qrData, usedBy) => api.post(`/tickets/${id}/verify`, { qrData, usedBy }),
   cancelTicket: (id) => api.post(`/tickets/${id}/cancel`),
   getEventTickets: (eventId, params) => api.get(`/tickets/event/${eventId}`, { params }),

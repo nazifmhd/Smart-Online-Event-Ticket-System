@@ -8,26 +8,8 @@ const router = express.Router();
 // @route   GET /api/events
 // @desc    Get all published events with filtering and pagination
 // @access  Public
-router.get('/', [
-  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
-  query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Limit must be between 1 and 50'),
-  query('category').optional().isIn(['concert', 'sports', 'conference', 'workshop', 'exhibition', 'festival', 'other']),
-  query('city').optional().trim(),
-  query('dateFrom').optional().isISO8601().withMessage('Invalid date format'),
-  query('dateTo').optional().isISO8601().withMessage('Invalid date format'),
-  query('priceMin').optional().isFloat({ min: 0 }).withMessage('Minimum price must be non-negative'),
-  query('priceMax').optional().isFloat({ min: 0 }).withMessage('Maximum price must be non-negative'),
-  query('search').optional().trim()
-], async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
-      });
-    }
-
     const {
       page = 1,
       limit = 10,
@@ -42,62 +24,138 @@ router.get('/', [
       sortOrder = 'asc'
     } = req.query;
 
+    // Validate and parse page and limit
+    const pageNum = parseInt(page) || 1;
+    const limitNum = Math.min(parseInt(limit) || 10, 50); // Max 50 items per page
+
+    // Validate category if provided
+    const validCategories = ['concert', 'sports', 'conference', 'workshop', 'exhibition', 'festival', 'other'];
+    const validCategory = category && validCategories.includes(category) ? category : undefined;
+
+    // Convert empty strings to undefined for optional params
+    const cleanParams = {
+      category: validCategory,
+      city: city && city.trim() ? city.trim() : undefined,
+      dateFrom: dateFrom && dateFrom.trim() ? dateFrom.trim() : undefined,
+      dateTo: dateTo && dateTo.trim() ? dateTo.trim() : undefined,
+      priceMin: priceMin && priceMin.trim() ? parseFloat(priceMin) : undefined,
+      priceMax: priceMax && priceMax.trim() ? parseFloat(priceMax) : undefined,
+      search: search && search.trim() ? search.trim() : undefined,
+      sortBy: sortBy || 'date',
+      sortOrder: (sortOrder === 'desc' || sortOrder === 'asc') ? sortOrder : 'asc'
+    };
+
+    // Validate dates if provided
+    if (cleanParams.dateFrom && isNaN(Date.parse(cleanParams.dateFrom))) {
+      return res.status(400).json({ message: 'Invalid dateFrom format' });
+    }
+    if (cleanParams.dateTo && isNaN(Date.parse(cleanParams.dateTo))) {
+      return res.status(400).json({ message: 'Invalid dateTo format' });
+    }
+
+    // Validate prices if provided
+    if (cleanParams.priceMin !== undefined && (isNaN(cleanParams.priceMin) || cleanParams.priceMin < 0)) {
+      return res.status(400).json({ message: 'Invalid priceMin value' });
+    }
+    if (cleanParams.priceMax !== undefined && (isNaN(cleanParams.priceMax) || cleanParams.priceMax < 0)) {
+      return res.status(400).json({ message: 'Invalid priceMax value' });
+    }
+
     // Build filter object
     const filter = { status: 'published' };
 
-    if (category) filter.category = category;
-    if (city) filter['location.city'] = new RegExp(city, 'i');
-    if (dateFrom || dateTo) {
+    if (cleanParams.category) filter.category = cleanParams.category;
+    if (cleanParams.city) filter['location.address.city'] = new RegExp(cleanParams.city, 'i');
+    if (cleanParams.dateFrom || cleanParams.dateTo) {
       filter['date.startDate'] = {};
-      if (dateFrom) filter['date.startDate'].$gte = new Date(dateFrom);
-      if (dateTo) filter['date.startDate'].$lte = new Date(dateTo);
+      if (cleanParams.dateFrom) filter['date.startDate'].$gte = new Date(cleanParams.dateFrom);
+      if (cleanParams.dateTo) filter['date.startDate'].$lte = new Date(cleanParams.dateTo);
     }
-    if (search) {
+    if (cleanParams.search) {
       filter.$or = [
-        { title: new RegExp(search, 'i') },
-        { description: new RegExp(search, 'i') },
-        { tags: { $in: [new RegExp(search, 'i')] } }
+        { title: new RegExp(cleanParams.search, 'i') },
+        { description: new RegExp(cleanParams.search, 'i') },
+        { tags: { $in: [new RegExp(cleanParams.search, 'i')] } }
       ];
     }
 
     // Build sort object
     const sort = {};
-    if (sortBy === 'date') {
-      sort['date.startDate'] = sortOrder === 'desc' ? -1 : 1;
-    } else if (sortBy === 'price') {
-      sort['pricing.categories.price'] = sortOrder === 'desc' ? -1 : 1;
-    } else if (sortBy === 'popularity') {
-      sort['analytics.views'] = sortOrder === 'desc' ? -1 : 1;
+    if (cleanParams.sortBy === 'date') {
+      sort['date.startDate'] = cleanParams.sortOrder === 'desc' ? -1 : 1;
+    } else if (cleanParams.sortBy === 'price') {
+      sort['pricing.categories.price'] = cleanParams.sortOrder === 'desc' ? -1 : 1;
+    } else if (cleanParams.sortBy === 'popularity') {
+      sort['analytics.views'] = cleanParams.sortOrder === 'desc' ? -1 : 1;
     }
 
     // Execute query with pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
     
     const events = await Event.find(filter)
       .populate('organizer', 'name email')
       .sort(sort)
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(limitNum)
       .lean();
 
     const total = await Event.countDocuments(filter);
 
     // Filter by price range if specified
     let filteredEvents = events;
-    if (priceMin !== undefined || priceMax !== undefined) {
+    if (cleanParams.priceMin !== undefined || cleanParams.priceMax !== undefined) {
       filteredEvents = events.filter(event => {
         const prices = event.pricing.categories.map(cat => cat.price);
         const minPrice = Math.min(...prices);
         const maxPrice = Math.max(...prices);
         
-        if (priceMin !== undefined && minPrice < parseFloat(priceMin)) return false;
-        if (priceMax !== undefined && maxPrice > parseFloat(priceMax)) return false;
+        if (cleanParams.priceMin !== undefined && minPrice < cleanParams.priceMin) return false;
+        if (cleanParams.priceMax !== undefined && maxPrice > cleanParams.priceMax) return false;
         return true;
       });
     }
 
     res.json({
       events: filteredEvents,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalEvents: total,
+        hasNext: skip + limitNum < total,
+        hasPrev: pageNum > 1
+      }
+    });
+  } catch (error) {
+    console.error('Get events error:', error);
+    res.status(500).json({ message: 'Server error while fetching events' });
+  }
+});
+
+// @route   GET /api/events/organizer/my-events
+// @desc    Get events created by current organizer
+// @access  Private (Organizer/Admin)
+router.get('/organizer/my-events', authenticate, authorize('organizer', 'admin'), async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const filter = { organizer: req.user._id };
+    
+    if (status) {
+      filter.status = status;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const events = await Event.find(filter)
+      .populate('organizer', 'name email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const total = await Event.countDocuments(filter);
+
+    res.json({
+      events,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / parseInt(limit)),
@@ -107,7 +165,7 @@ router.get('/', [
       }
     });
   } catch (error) {
-    console.error('Get events error:', error);
+    console.error('Get my events error:', error);
     res.status(500).json({ message: 'Server error while fetching events' });
   }
 });
@@ -262,41 +320,6 @@ router.delete('/:id', authenticate, authorizeEventOrganizer, async (req, res) =>
   } catch (error) {
     console.error('Delete event error:', error);
     res.status(500).json({ message: 'Server error while deleting event' });
-  }
-});
-
-// @route   GET /api/events/organizer/my-events
-// @desc    Get events created by current organizer
-// @access  Private (Organizer/Admin)
-router.get('/organizer/my-events', authenticate, authorize('organizer', 'admin'), async (req, res) => {
-  try {
-    const { page = 1, limit = 10, status } = req.query;
-    const filter = { organizer: req.user._id };
-    
-    if (status) filter.status = status;
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    const events = await Event.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Event.countDocuments(filter);
-
-    res.json({
-      events,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit)),
-        totalEvents: total,
-        hasNext: skip + parseInt(limit) < total,
-        hasPrev: parseInt(page) > 1
-      }
-    });
-  } catch (error) {
-    console.error('Get organizer events error:', error);
-    res.status(500).json({ message: 'Server error while fetching organizer events' });
   }
 });
 

@@ -22,7 +22,7 @@ router.post('/register', [
   body('name').trim().isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters'),
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-  body('phone').optional().isMobilePhone('en-LK').withMessage('Please provide a valid Sri Lankan phone number'),
+  body('phone').optional().matches(/^0[7-9]\d{8}$/).withMessage('Please provide a valid Sri Lankan phone number (e.g., 0712345678)'),
   body('role').optional().isIn(['user', 'organizer']).withMessage('Invalid role')
 ], async (req, res) => {
   try {
@@ -155,7 +155,7 @@ router.get('/me', authenticate, async (req, res) => {
 // @access  Private
 router.put('/profile', authenticate, [
   body('name').optional().trim().isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters'),
-  body('phone').optional().isMobilePhone('en-LK').withMessage('Please provide a valid Sri Lankan phone number'),
+  body('phone').optional().matches(/^0[7-9]\d{8}$/).withMessage('Please provide a valid Sri Lankan phone number (e.g., 0712345678)'),
   body('address.street').optional().trim(),
   body('address.city').optional().trim(),
   body('address.state').optional().trim(),

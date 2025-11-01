@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Link } from 'react-router-dom';
 import { ticketsAPI } from '../services/api';
 import toast from 'react-hot-toast';
+import QRCodeDisplay from '../components/QRCodeDisplay';
 import { 
   Ticket, 
   Calendar, 
@@ -321,119 +322,14 @@ const MyTickets = () => {
 
       {/* QR Code Modal */}
       {selectedTicket && (
-        <QRCodeModal
+        <QRCodeDisplay
           ticket={selectedTicket}
+          isOpen={!!selectedTicket}
           onClose={() => setSelectedTicket(null)}
+          showDetails={true}
+          size="large"
         />
       )}
-    </div>
-  );
-};
-
-// QR Code Modal Component
-const QRCodeModal = ({ ticket, onClose }) => {
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (timeString) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-semibold text-gray-900">Your Ticket</h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            {/* QR Code */}
-            <div className="text-center">
-              <div className="bg-gray-100 p-8 rounded-lg mb-4">
-                <QrCode className="w-32 h-32 text-gray-400 mx-auto" />
-                <p className="text-sm text-gray-500 mt-2">QR Code will be displayed here</p>
-              </div>
-              <p className="text-sm text-gray-600">
-                Show this QR code at the event entrance
-              </p>
-            </div>
-
-            {/* Ticket Details */}
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">{ticket.event.title}</h4>
-                <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    {formatDate(ticket.event.date.startDate)}
-                  </div>
-                  <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-2" />
-                    {formatTime(ticket.event.date.time.startTime)}
-                  </div>
-                  <div className="flex items-center">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {ticket.event.location.venue}
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Ticket Number</span>
-                  <span className="font-medium">{ticket.ticketNumber}</span>
-                </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Category</span>
-                  <span className="font-medium">{ticket.pricingCategory.name}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Price</span>
-                  <span className="font-bold text-green-600">
-                    LKR {ticket.pricingCategory.price.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex space-x-4">
-              <button
-                onClick={onClose}
-                className="flex-1 btn-secondary"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  // Implement download functionality
-                  toast.success('Ticket downloaded!');
-                }}
-                className="flex-1 btn-primary flex items-center justify-center"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

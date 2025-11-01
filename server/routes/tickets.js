@@ -78,17 +78,36 @@ router.post('/book', authenticate, [
       });
     }
 
+    // Get payment method from request or use default
+    const paymentMethodType = req.body.paymentMethod || 'cash_on_delivery';
+    const validPaymentMethods = ['credit_card', 'debit_card', 'mobile_wallet', 'bank_transfer', 'cash_on_delivery'];
+    const finalPaymentMethod = validPaymentMethods.includes(paymentMethodType) ? paymentMethodType : 'cash_on_delivery';
+
+    // Generate payment ID
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substr(2, 5);
+    const paymentId = `PAY-${timestamp}-${random}`.toUpperCase();
+
     // Create payment record
+    // For cash_on_delivery, mark as completed (payment will be collected later)
+    // For other methods, keep as pending until processed
+    const paymentStatus = finalPaymentMethod === 'cash_on_delivery' ? 'completed' : 'pending';
+    
     const payment = new Payment({
       user: req.user._id,
       event: eventId,
+      paymentId: paymentId,
       amount: {
         total: totalAmount,
         subtotal: totalAmount,
         currency: 'LKR'
       },
+      paymentMethod: {
+        type: finalPaymentMethod,
+        details: req.body.paymentDetails || {}
+      },
       billingAddress,
-      status: 'pending'
+      status: paymentStatus
     });
 
     await payment.save();
@@ -98,14 +117,22 @@ router.post('/book', authenticate, [
     
     for (const ticketRequest of ticketRequests) {
       for (let i = 0; i < ticketRequest.quantity; i++) {
+        // Generate unique ticket number
+        const ticketTimestamp = Date.now().toString(36);
+        const ticketRandom = Math.random().toString(36).substr(2, 5);
+        const ticketIndex = i.toString().padStart(2, '0');
+        const ticketNumber = `TKT-${ticketTimestamp}-${ticketRandom}-${ticketIndex}`.toUpperCase();
+
         const ticket = new Ticket({
           user: req.user._id,
           event: eventId,
           payment: payment._id,
+          ticketNumber: ticketNumber,
           pricingCategory: {
             name: ticketRequest.category.name,
             price: ticketRequest.category.price
-          }
+          },
+          status: paymentStatus === 'completed' ? 'confirmed' : 'pending'
         });
 
         // Generate QR code data
@@ -194,6 +221,51 @@ router.get('/my-tickets', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Get user tickets error:', error);
     res.status(500).json({ message: 'Server error while fetching tickets' });
+  }
+});
+
+// @route   GET /api/tickets/:id/qr-code
+// @desc    Get ticket QR code
+// @access  Private
+router.get('/:id/qr-code', authenticate, async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.id);
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    // Check if user owns the ticket or is admin/organizer
+    if (ticket.user.toString() !== req.user._id.toString() && 
+        !['admin', 'organizer'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // If QR code image doesn't exist, generate it
+    if (!ticket.qrCode.image && ticket.qrCode.data) {
+      try {
+        const qrImage = await QRCode.toDataURL(ticket.qrCode.data, {
+          width: 200,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        ticket.qrCode.image = qrImage;
+        await ticket.save();
+      } catch (qrError) {
+        console.error('QR code generation error:', qrError);
+      }
+    }
+
+    res.json({
+      data: ticket.qrCode.data,
+      image: ticket.qrCode.image
+    });
+  } catch (error) {
+    console.error('Get QR code error:', error);
+    res.status(500).json({ message: 'Server error while fetching QR code' });
   }
 });
 

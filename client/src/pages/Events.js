@@ -68,10 +68,19 @@ const Events = () => {
   ];
 
   if (error) {
+    console.error('Events loading error:', error);
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Events</h2>
-        <p className="text-gray-600">Please try again later.</p>
+        <p className="text-gray-600 mb-4">
+          {error.response?.data?.message || error.message || 'Please try again later.'}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="btn-primary"
+        >
+          Retry
+        </button>
       </div>
     );
   }

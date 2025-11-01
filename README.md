@@ -79,8 +79,15 @@ This system automates event ticket booking, enabling users to browse, book, and 
    ```
 
 4. **Start the development servers**
+
+   **Option A: Using npm script (recommended)**
    ```bash
    npm run dev
+   ```
+
+   **Option B: Using the startup script**
+   ```bash
+   node start-simple.js
    ```
 
    This will start:

@@ -12,7 +12,7 @@ process.env.CLIENT_URL = 'http://localhost:3000';
 console.log('📡 Starting Backend Server...');
 console.log('🔧 Using MongoDB: mongodb://localhost:27017/smart-event-tickets');
 
-const backend = spawn('npm', ['start'], {
+const backend = spawn('npm', ['run', 'dev'], {
   cwd: path.join(__dirname, 'server'),
   stdio: 'inherit',
   shell: true,

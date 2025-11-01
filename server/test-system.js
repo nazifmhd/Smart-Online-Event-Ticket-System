@@ -14,10 +14,7 @@ async function testSystem() {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
     
-    await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+  await mongoose.connect(mongoUri);
     console.log('✅ Database connection successful');
     
     // Test 2: Model Loading
